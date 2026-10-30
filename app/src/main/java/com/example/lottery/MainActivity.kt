@@ -49,7 +49,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnStop: Button
     private lateinit var btnSelectFolder: Button
     private lateinit var btnResetCooldown: Button
-    private lateinit var btnSettings: Button
 
     private val selectFolderLauncher = registerForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
@@ -70,12 +69,8 @@ class MainActivity : AppCompatActivity() {
         btnStart = findViewById(R.id.btnStart)
         btnStop = findViewById(R.id.btnStop)
         btnSelectFolder = findViewById(R.id.btnSelectFolder)
-        
-        // 动态给顶部操作栏添加/绑定设置按钮（复用或新增）
         btnResetCooldown = findViewById(R.id.btnResetCooldown)
-        
-        // 如果原本布局里没有 btnSettings，我们这里用代码动态处理，或者可以通过弹窗菜单集成
-        // 这里我们在界面上加一个“⚙ 设置”按钮的逻辑：直接点击重置冷却旁边，或者我们加个对话框入口
+
         setupButtons()
     }
 
@@ -85,14 +80,13 @@ class MainActivity : AppCompatActivity() {
         btnStop.setOnClickListener { stopLottery() }
         btnResetCooldown.setOnClickListener { resetCooldown() }
 
-        // 长按“重置冷却”或者在状态栏旁边点击可以呼出设置菜单
+        // 长按状态栏打开设置
         tvStatusInfo.setOnLongClickListener {
             showSettingsDialog()
             true
         }
         
-        // 提示用户长按状态栏可以打开设置
-        tvStatusInfo.text = "状态: 未加载目录 (💡长按本栏打开请假与显示设置)"
+        tvStatusInfo.text = "状态: 未加载目录 (💡长按本栏打开设置)"
     }
 
     private fun parsePhotosFromDirectory(treeUri: Uri) {
@@ -142,7 +136,6 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    // 1. 人员请假状态设置弹窗
     private fun showLeaveManagementDialog() {
         val names = studentList.map { "${it.id} - ${it.name}" }.toTypedArray()
         val checkedItems = studentList.map { it.isActive }.toBooleanArray()
@@ -161,7 +154,6 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    // 2. 显示元素设置弹窗
     private fun showDisplayConfigDialog() {
         val items = arrayOf("显示学号", "显示姓名", "显示职务")
         val checked = booleanArrayOf(showId, showName, showTitle)
@@ -176,7 +168,6 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             .setPositiveButton("确定") { _, _ ->
-                // 刷新当前展示
                 updateStatusInfo()
             }
             .setNegativeButton("取消", null)
@@ -186,7 +177,7 @@ class MainActivity : AppCompatActivity() {
     private fun startLottery() {
         val available = studentList.filter { it.isActive && !it.isInCooldown }
         if (available.isEmpty()) {
-            tvStatusInfo.text = "提示：没有可抽取的对象了（或全请假/已冷却）！"
+            tvStatusInfo.text = "提示：没有可抽取的对象了！"
             return
         }
 
@@ -209,7 +200,15 @@ class MainActivity : AppCompatActivity() {
             winner.isInCooldown = true
             displayStudent(winner)
 
-            val record = "【中选】${winner.id} - ${winner.name} ${if(winner.title.isNotEmpty()) "(${winner.title})" else ""}"
+            // 根据当前的显示配置动态拼接历史记录文本
+            val parts = mutableListOf<String>()
+            if (showId) parts.add(winner.id)
+            if (showName) parts.add(winner.name)
+            if (showTitle && winner.title.isNotEmpty()) parts.add("(${winner.title})")
+            
+            val recordStr = parts.joinToString(" ")
+            val record = "【中选】$recordStr"
+            
             historyList.add(0, record)
             tvHistoryLog.text = historyList.joinToString("\n")
         }
