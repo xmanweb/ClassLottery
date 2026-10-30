@@ -24,10 +24,16 @@ data class Student(
     var isInCooldown: Boolean = false   // 冷却状态
 )
 
+// 定义历史记录的存储结构：保存学生对象和事件标签
+sealed class HistoryItem {
+    data class WinnerRecord(val student: Student) : HistoryItem()
+    data class SystemRecord(val message: String) : HistoryItem()
+}
+
 class MainActivity : AppCompatActivity() {
 
     private val studentList = mutableListOf<Student>()
-    private val historyList = mutableListOf<String>()
+    private val historyList = mutableListOf<HistoryItem>() // 改为存储结构化数据
     private val handler = Handler(Looper.getMainLooper())
     private var isRolling = false
 
@@ -74,13 +80,12 @@ class MainActivity : AppCompatActivity() {
         setupButtons()
     }
 
-    private fun setupButtons() {
+    private val setupButtons = {
         btnSelectFolder.setOnClickListener { selectFolderLauncher.launch(null) }
         btnStart.setOnClickListener { startLottery() }
         btnStop.setOnClickListener { stopLottery() }
         btnResetCooldown.setOnClickListener { resetCooldown() }
 
-        // 长按状态栏打开设置
         tvStatusInfo.setOnLongClickListener {
             showSettingsDialog()
             true
@@ -147,8 +152,8 @@ class MainActivity : AppCompatActivity() {
             }
             .setPositiveButton("确定") { _, _ ->
                 updateStatusInfo()
-                historyList.add(0, "【系统】更新了学生出勤状态")
-                tvHistoryLog.text = historyList.joinToString("\n")
+                historyList.add(0, HistoryItem.SystemRecord("【系统】更新了学生出勤状态"))
+                refreshHistoryUI()
             }
             .setNegativeButton("取消", null)
             .show()
@@ -169,6 +174,8 @@ class MainActivity : AppCompatActivity() {
             }
             .setPositiveButton("确定") { _, _ ->
                 updateStatusInfo()
+                // 当设置改变时，立即全局刷新历史记录界面的渲染格式！
+                refreshHistoryUI()
             }
             .setNegativeButton("取消", null)
             .show()
@@ -200,17 +207,9 @@ class MainActivity : AppCompatActivity() {
             winner.isInCooldown = true
             displayStudent(winner)
 
-            // 根据当前的显示配置动态拼接历史记录文本
-            val parts = mutableListOf<String>()
-            if (showId) parts.add(winner.id)
-            if (showName) parts.add(winner.name)
-            if (showTitle && winner.title.isNotEmpty()) parts.add("(${winner.title})")
-            
-            val recordStr = parts.joinToString(" ")
-            val record = "【中选】$recordStr"
-            
-            historyList.add(0, record)
-            tvHistoryLog.text = historyList.joinToString("\n")
+            // 将结构化的中选记录加入列表
+            historyList.add(0, HistoryItem.WinnerRecord(winner))
+            refreshHistoryUI()
         }
 
         updateStatusInfo()
@@ -221,8 +220,33 @@ class MainActivity : AppCompatActivity() {
     private fun resetCooldown() {
         studentList.forEach { it.isInCooldown = false }
         updateStatusInfo()
-        historyList.add(0, "【系统】冷却状态已重置")
-        tvHistoryLog.text = historyList.joinToString("\n")
+        historyList.add(0, HistoryItem.SystemRecord("【系统】冷却状态已重置"))
+        refreshHistoryUI()
+    }
+
+    // 核心方法：根据当前的 showId、showName、showTitle 实时渲染所有历史记录
+    private fun refreshHistoryUI() {
+        if (historyList.isEmpty()) {
+            tvHistoryLog.text = "暂无记录..."
+            return
+        }
+
+        val formattedLogs = historyList.map { item ->
+            when (item) {
+                is HistoryItem.SystemRecord -> item.message
+                is HistoryItem.WinnerRecord -> {
+                    val s = item.student
+                    val parts = mutableListOf<String>()
+                    if (showId) parts.add(s.id)
+                    if (showName) parts.add(s.name)
+                    if (showTitle && s.title.isNotEmpty()) parts.add("(${s.title})")
+                    
+                    val recordStr = parts.joinToString(" ")
+                    "【中选】$recordStr"
+                }
+            }
+        }
+        tvHistoryLog.text = formattedLogs.joinToString("\n")
     }
 
     private val rollRunnable = object : Runnable {
