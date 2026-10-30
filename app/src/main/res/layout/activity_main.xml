@@ -3,58 +3,94 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#F8F9FA"
-    android:gravity="center_horizontal"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:padding="12dp">
 
-    <Button
-        android:id="@+id/btnSelectFolder"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="📁 选择照片文件夹 (.png)" />
-
-    <ImageView
-        android:id="@+id/imgResult"
-        android:layout_width="220dp"
-        android:layout_height="280dp"
-        android:layout_marginTop="16dp"
-        android:background="#FFFFFF"
-        android:scaleType="centerInside" />
-
-    <TextView
-        android:id="@+id/tvResultId"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:text="学号: --"
-        android:textColor="#0066CC"
-        android:textSize="18sp" />
-
-    <TextView
-        android:id="@+id/tvResultName"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:text="姓名: ---"
-        android:textColor="#333333"
-        android:textSize="18sp" />
-
-    <TextView
-        android:id="@+id/tvResultTitle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:text=""
-        android:textColor="#E67E22"
-        android:textSize="14sp" />
-
+    <-exit 顶部操作栏 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
+        android:orientation="horizontal">
+        <Button
+            android:id="@+id/btnSelectFolder"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="📁 选择照片目录" />
+        <Button
+            android:id="@+id/btnResetCooldown"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:backgroundTint="#FF9800"
+            android:text="🔄 重置冷却"
+            android:textColor="#FFFFFF" />
+    </LinearLayout>
+
+    <-exit 状态统计栏 -->
+    <TextView
+        android:id="@+id/tvStatusInfo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:gravity="center"
+        android:text="状态: 未加载学生目录"
+        android:textColor="#666666"
+        android:textSize="14sp" />
+
+    <-exit 中间核心展示区 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:background="#FFFFFF"
+        android:elevation="2dp"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:padding="12dp">
+
+        <ImageView
+            android:id="@+id/imgResult"
+            android:layout_width="160dp"
+            android:layout_height="200dp"
+            android:background="#EEEEEE"
+            android:scaleType="centerInside" />
+
+        <TextView
+            android:id="@+id/tvResultId"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="学号: --"
+            android:textColor="#0066CC"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/tvResultName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="姓名: ---"
+            android:textColor="#333333"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tvResultTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="职务: --"
+            android:textColor="#E67E22"
+            android:textSize="14sp" />
+    </LinearLayout>
+
+    <-exit 控制按钮区 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
         android:gravity="center"
         android:orientation="horizontal">
-
         <Button
             android:id="@+id/btnStart"
             android:layout_width="wrap_content"
@@ -62,7 +98,6 @@
             android:backgroundTint="#4CAF50"
             android:text="▶ 开始抽取"
             android:textColor="#FFFFFF" />
-
         <Button
             android:id="@+id/btnStop"
             android:layout_width="wrap_content"
@@ -73,4 +108,30 @@
             android:text="🎯 停止/揭晓"
             android:textColor="#FFFFFF" />
     </LinearLayout>
+
+    <-exit 底部抽签历史记录区 -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="📜 历史抽取记录："
+        android:textColor="#333333"
+        android:textStyle="bold" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="4dp"
+        android:background="#FFFFFF"
+        android:padding="8dp">
+        <TextView
+            android:id="@+id/tvHistoryLog"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="暂无记录..."
+            android:textColor="#444444"
+            android:textSize="13sp" />
+    </ScrollView>
+
 </LinearLayout>
