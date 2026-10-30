@@ -6,6 +6,7 @@
     android:orientation="vertical"
     android:padding="12dp">
 
+    <-exit 顶部操作栏 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -27,6 +28,7 @@
             android:textColor="#FFFFFF" />
     </LinearLayout>
 
+    <-exit 状态统计栏 -->
     <TextView
         android:id="@+id/tvStatusInfo"
         android:layout_width="match_parent"
@@ -37,27 +39,32 @@
         android:textColor="#666666"
         android:textSize="14sp" />
 
+    <-exit 中间核心展示区：固定最小高度，防止文本变化时撑大布局导致按钮跳动 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:minHeight="320dp"
         android:layout_marginTop="8dp"
         android:background="#FFFFFF"
+        android:elevation="2dp"
         android:gravity="center_horizontal"
         android:orientation="vertical"
         android:padding="12dp">
 
+        <-exit 照片设为 centerCrop，自动缩放并撑满图片框 -->
         <ImageView
             android:id="@+id/imgResult"
             android:layout_width="160dp"
             android:layout_height="200dp"
             android:background="#EEEEEE"
-            android:scaleType="centerInside" />
+            android:scaleType="centerCrop" />
 
         <TextView
             android:id="@+id/tvResultId"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
+            android:minHeight="22dp"
             android:text="学号: --"
             android:textColor="#0066CC"
             android:textSize="16sp" />
@@ -66,6 +73,7 @@
             android:id="@+id/tvResultName"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:minHeight="26dp"
             android:text="姓名: ---"
             android:textColor="#333333"
             android:textSize="18sp"
@@ -75,11 +83,13 @@
             android:id="@+id/tvResultTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:minHeight="20dp"
             android:text="职务: --"
             android:textColor="#E67E22"
             android:textSize="14sp" />
     </LinearLayout>
 
+    <-exit 控制按钮区：上方加固，绝对不会随上方文本换行而上下跳动 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -104,6 +114,7 @@
             android:textColor="#FFFFFF" />
     </LinearLayout>
 
+    <-exit 底部抽签历史记录区 -->
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
