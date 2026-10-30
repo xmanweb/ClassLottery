@@ -257,7 +257,7 @@ class MainActivity : AppCompatActivity() {
                         if (showTitle && s.title.isNotEmpty()) parts.add("(${s.title})")
                         parts.joinToString(" ")
                     }
-                    "中选 (${item.winners.size}人): $namesStr"
+                    "中选: $namesStr"
                 }
             }
         }
@@ -302,29 +302,86 @@ class MainActivity : AppCompatActivity() {
         layoutMultiPhotos.visibility = View.VISIBLE
         layoutMultiPhotos.removeAllViews()
 
-        val screenWidthDp = resources.displayMetrics.widthPixels
-        val marginPx = (4 * resources.displayMetrics.density).toInt()
-        val availableWidth = screenWidthDp - (marginPx * 2 * winners.size)
-        val itemWidth = minOf(availableWidth / winners.size, (150 * resources.displayMetrics.density).toInt())
-        val itemHeight = (220 * resources.displayMetrics.density).toInt()
+        val density = resources.displayMetrics.density
+        val marginPx = (4 * density).toInt()
 
-        for (winner in winners) {
-            val iv = ImageView(this).apply {
-                layoutParams = LinearLayout.LayoutParams(itemWidth, itemHeight).apply {
-                    setMargins(marginPx, 0, marginPx, 0)
-                }
-                scaleType = ImageView.ScaleType.CENTER_CROP
-                setImageURI(winner.uri)
-                setBackgroundColor(0xFFEEEEEE.toInt())
+        // 3人时稍微降低高度，4人和5人时采用两行布局
+        val isTwoRows = winners.size >= 4
+        val targetHeightPx = when (winners.size) {
+            3 -> (170 * density).toInt()
+            4, 5 -> (105 * density).toInt()
+            else -> (180 * density).toInt()
+        }
+
+        if (!isTwoRows) {
+            val rowLayout = LinearLayout(this).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    targetHeightPx
+                )
+                orientation = LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.CENTER
             }
-            layoutMultiPhotos.addView(iv)
+
+            val screenWidthPx = resources.displayMetrics.widthPixels
+            val availableWidth = screenWidthPx - (marginPx * 2 * winners.size)
+            val itemWidth = availableWidth / winners.size
+
+            for (winner in winners) {
+                val iv = ImageView(this).apply {
+                    layoutParams = LinearLayout.LayoutParams(itemWidth, targetHeightPx).apply {
+                        setMargins(marginPx, 0, marginPx, 0)
+                    }
+                    scaleType = ImageView.ScaleType.CENTER_CROP
+                    setImageURI(winner.uri)
+                    setBackgroundColor(0xFFEEEEEE.toInt())
+                }
+                rowLayout.addView(iv)
+            }
+            layoutMultiPhotos.addView(rowLayout)
+        } else {
+            val row1List = winners.subList(0, 2)
+            val row2List = winners.subList(2, winners.size)
+
+            val createRow = fun(rowWinners: List<Student>) {
+                val rowLayout = LinearLayout(this).apply {
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        targetHeightPx
+                    ).apply {
+                        setMargins(0, marginPx, 0, marginPx)
+                    }
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = android.view.Gravity.CENTER
+                }
+
+                val screenWidthPx = resources.displayMetrics.widthPixels
+                val availableWidth = screenWidthPx - (marginPx * 2 * rowWinners.size)
+                val itemWidth = availableWidth / rowWinners.size
+
+                for (winner in rowWinners) {
+                    val iv = ImageView(this).apply {
+                        layoutParams = LinearLayout.LayoutParams(itemWidth, targetHeightPx).apply {
+                            setMargins(marginPx, 0, marginPx, 0)
+                        }
+                        scaleType = ImageView.ScaleType.CENTER_CROP
+                        setImageURI(winner.uri)
+                        setBackgroundColor(0xFFEEEEEE.toInt())
+                    }
+                    rowLayout.addView(iv)
+                }
+                layoutMultiPhotos.addView(rowLayout)
+            }
+
+            createRow(row1List)
+            createRow(row2List)
         }
 
         val ids = winners.joinToString(", ") { it.id }
-        val names = winners.joinToString(", ") { it.name }
+        val names = winners.joinToString("、") { it.name }
         
         tvResultId.text = if (showId) "学号: $ids" else ""
-        tvResultName.text = if (showName) "中选 (${winners.size}人)" else ""
+        tvResultName.text = if (showName) "$names" else ""
         tvResultTitle.text = if (showTitle) "多人分组抽取" else ""
     }
 

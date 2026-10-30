@@ -73,7 +73,7 @@
             android:id="@+id/layoutMultiPhotos"
             android:layout_width="match_parent"
             android:layout_height="250dp"
-            android:orientation="horizontal"
+            android:orientation="vertical"
             android:gravity="center"
             android:visibility="gone" />
 
