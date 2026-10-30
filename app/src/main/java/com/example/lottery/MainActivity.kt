@@ -1,7 +1,8 @@
 package com.example.lottery
 
 import android.content.Intent
-import android.media.MediaPlayer
+import android.media.ToneGenerator
+import android.media.AudioManager
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
@@ -30,8 +31,8 @@ class MainActivity : AppCompatActivity() {
     private val handler = Handler(Looper.getMainLooper())
     private var isRolling = false
 
-    private var bgmPlayer: MediaPlayer? = null
-    private var finishPlayer: MediaPlayer? = null
+    // 系统自带音效生成器（无需音频文件）
+    private val toneGen = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 100)
 
     // UI 控件
     private lateinit var tvResultId: TextView
@@ -61,10 +62,6 @@ class MainActivity : AppCompatActivity() {
         btnStart = findViewById(R.id.btnStart)
         btnStop = findViewById(R.id.btnStop)
         btnSelectFolder = findViewById(R.id.btnSelectFolder)
-
-        // 内置音乐初始化（音频需放置在 res/raw/ 目录下）
-        bgmPlayer = MediaPlayer.create(this, R.raw.bgm).apply { isLooping = true }
-        finishPlayer = MediaPlayer.create(this, R.raw.finish)
 
         // 事件绑定
         btnSelectFolder.setOnClickListener {
@@ -107,7 +104,6 @@ class MainActivity : AppCompatActivity() {
         btnStart.isEnabled = false
         btnStop.isEnabled = true
 
-        bgmPlayer?.start()
         rollRunnable.run()
     }
 
@@ -116,9 +112,8 @@ class MainActivity : AppCompatActivity() {
         isRolling = false
         handler.removeCallbacks(rollRunnable)
 
-        bgmPlayer?.pause()
-        bgmPlayer?.seekTo(0)
-        finishPlayer?.start()
+        // 播放系统内置提示音（成功音效）
+        toneGen.startTone(ToneGenerator.TONE_PROP_ACK)
 
         val available = studentList.filter { it.isActive && !it.isInCooldown }
         if (available.isNotEmpty()) {
@@ -155,8 +150,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        bgmPlayer?.release()
-        finishPlayer?.release()
+        toneGen.release()
     }
 }
 
