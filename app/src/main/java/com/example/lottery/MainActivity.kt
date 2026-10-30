@@ -1,5 +1,6 @@
 package com.example.lottery
 
+import android.app.AlertDialog
 import android.media.AudioManager
 import android.media.ToneGenerator
 import android.net.Uri
@@ -19,8 +20,8 @@ data class Student(
     val name: String,
     val title: String,
     val uri: Uri,
-    var isActive: Boolean = true,
-    var isInCooldown: Boolean = false
+    var isActive: Boolean = true,       // 是否参与抽取（请假开关）
+    var isInCooldown: Boolean = false   // 冷却状态
 )
 
 class MainActivity : AppCompatActivity() {
@@ -31,6 +32,11 @@ class MainActivity : AppCompatActivity() {
     private var isRolling = false
 
     private val toneGen = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 100)
+
+    // 显示元素配置项
+    private var showId = true
+    private var showName = true
+    private var showTitle = true
 
     // UI 控件
     private lateinit var tvStatusInfo: TextView
@@ -43,6 +49,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnStop: Button
     private lateinit var btnSelectFolder: Button
     private lateinit var btnResetCooldown: Button
+    private lateinit var btnSettings: Button
 
     private val selectFolderLauncher = registerForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
@@ -63,12 +70,29 @@ class MainActivity : AppCompatActivity() {
         btnStart = findViewById(R.id.btnStart)
         btnStop = findViewById(R.id.btnStop)
         btnSelectFolder = findViewById(R.id.btnSelectFolder)
+        
+        // 动态给顶部操作栏添加/绑定设置按钮（复用或新增）
         btnResetCooldown = findViewById(R.id.btnResetCooldown)
+        
+        // 如果原本布局里没有 btnSettings，我们这里用代码动态处理，或者可以通过弹窗菜单集成
+        // 这里我们在界面上加一个“⚙ 设置”按钮的逻辑：直接点击重置冷却旁边，或者我们加个对话框入口
+        setupButtons()
+    }
 
+    private fun setupButtons() {
         btnSelectFolder.setOnClickListener { selectFolderLauncher.launch(null) }
         btnStart.setOnClickListener { startLottery() }
         btnStop.setOnClickListener { stopLottery() }
         btnResetCooldown.setOnClickListener { resetCooldown() }
+
+        // 长按“重置冷却”或者在状态栏旁边点击可以呼出设置菜单
+        tvStatusInfo.setOnLongClickListener {
+            showSettingsDialog()
+            true
+        }
+        
+        // 提示用户长按状态栏可以打开设置
+        tvStatusInfo.text = "状态: 未加载目录 (💡长按本栏打开请假与显示设置)"
     }
 
     private fun parsePhotosFromDirectory(treeUri: Uri) {
@@ -95,14 +119,74 @@ class MainActivity : AppCompatActivity() {
     private fun updateStatusInfo() {
         val total = studentList.size
         val available = studentList.count { it.isActive && !it.isInCooldown }
+        val absent = studentList.count { !it.isActive }
         val cooled = studentList.count { it.isInCooldown }
-        tvStatusInfo.text = "总人数: $total | 可抽取: $available | 已冷却: $cooled"
+        tvStatusInfo.text = "总:$total | 可抽:$available | 请假:$absent | 冷:$cooled (💡长按打开设置)"
+    }
+
+    private fun showSettingsDialog() {
+        if (studentList.isEmpty()) {
+            tvStatusInfo.text = "提示：请先选择照片目录加载学生名单！"
+            return
+        }
+
+        val options = arrayOf("👥 请假/出勤状态管理", "🎨 显示元素设置 (学号/姓名/职务)")
+        AlertDialog.Builder(this)
+            .setTitle("⚙ 系统高级设置")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> showLeaveManagementDialog()
+                    1 -> showDisplayConfigDialog()
+                }
+            }
+            .show()
+    }
+
+    // 1. 人员请假状态设置弹窗
+    private fun showLeaveManagementDialog() {
+        val names = studentList.map { "${it.id} - ${it.name}" }.toTypedArray()
+        val checkedItems = studentList.map { it.isActive }.toBooleanArray()
+
+        AlertDialog.Builder(this)
+            .setTitle("👥 请假管理 (勾选代表正常出勤)")
+            .setMultiChoiceItems(names, checkedItems) { _, index, isChecked ->
+                studentList[index].isActive = isChecked
+            }
+            .setPositiveButton("确定") { _, _ ->
+                updateStatusInfo()
+                historyList.add(0, "【系统】更新了学生出勤状态")
+                tvHistoryLog.text = historyList.joinToString("\n")
+            }
+            .setNegativeButton("取消", null)
+            .show()
+    }
+
+    // 2. 显示元素设置弹窗
+    private fun showDisplayConfigDialog() {
+        val items = arrayOf("显示学号", "显示姓名", "显示职务")
+        val checked = booleanArrayOf(showId, showName, showTitle)
+
+        AlertDialog.Builder(this)
+            .setTitle("🎨 抽取结果显示元素设置")
+            .setMultiChoiceItems(items, checked) { _, which, isChecked ->
+                when (which) {
+                    0 -> showId = isChecked
+                    1 -> showName = isChecked
+                    2 -> showTitle = isChecked
+                }
+            }
+            .setPositiveButton("确定") { _, _ ->
+                // 刷新当前展示
+                updateStatusInfo()
+            }
+            .setNegativeButton("取消", null)
+            .show()
     }
 
     private fun startLottery() {
         val available = studentList.filter { it.isActive && !it.isInCooldown }
         if (available.isEmpty()) {
-            tvStatusInfo.text = "提示：没有可抽取的对象了，请先重置冷却！"
+            tvStatusInfo.text = "提示：没有可抽取的对象了（或全请假/已冷却）！"
             return
         }
 
@@ -125,7 +209,6 @@ class MainActivity : AppCompatActivity() {
             winner.isInCooldown = true
             displayStudent(winner)
 
-            // 写入历史记录
             val record = "【中选】${winner.id} - ${winner.name} ${if(winner.title.isNotEmpty()) "(${winner.title})" else ""}"
             historyList.add(0, record)
             tvHistoryLog.text = historyList.joinToString("\n")
@@ -139,7 +222,8 @@ class MainActivity : AppCompatActivity() {
     private fun resetCooldown() {
         studentList.forEach { it.isInCooldown = false }
         updateStatusInfo()
-        tvHistoryLog.text = "--- 冷却状态已重置 ---"
+        historyList.add(0, "【系统】冷却状态已重置")
+        tvHistoryLog.text = historyList.joinToString("\n")
     }
 
     private val rollRunnable = object : Runnable {
@@ -156,9 +240,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun displayStudent(student: Student) {
-        tvResultId.text = "学号: ${student.id}"
-        tvResultName.text = "姓名: ${student.name}"
-        tvResultTitle.text = if (student.title.isNotEmpty()) "职务: ${student.title}" else "职务: 无"
+        tvResultId.text = if (showId) "学号: ${student.id}" else ""
+        tvResultName.text = if (showName) "姓名: ${student.name}" else ""
+        tvResultTitle.text = if (showTitle && student.title.isNotEmpty()) "职务: ${student.title}" else if(showTitle) "职务: 无" else ""
         imgResult.setImageURI(student.uri)
     }
 
