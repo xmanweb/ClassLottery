@@ -7,8 +7,10 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.view.View
 import android.widget.Button
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -49,6 +51,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvResultTitle: TextView
     private lateinit var tvHistoryLog: TextView
     private lateinit var imgResult: ImageView
+    private lateinit var layoutMultiPhotos: LinearLayout
     private lateinit var btnStart: Button
     private lateinit var btnStop: Button
     private lateinit var btnSelectFolder: Button
@@ -71,6 +74,7 @@ class MainActivity : AppCompatActivity() {
         tvResultTitle = findViewById(R.id.tvResultTitle)
         tvHistoryLog = findViewById(R.id.tvHistoryLog)
         imgResult = findViewById(R.id.imgResult)
+        layoutMultiPhotos = findViewById(R.id.layoutMultiPhotos)
         btnStart = findViewById(R.id.btnStart)
         btnStop = findViewById(R.id.btnStop)
         btnSelectFolder = findViewById(R.id.btnSelectFolder)
@@ -265,15 +269,23 @@ class MainActivity : AppCompatActivity() {
             if (isRolling) {
                 val available = studentList.filter { it.isActive && !it.isInCooldown }
                 if (available.isNotEmpty()) {
-                    val randomStudent = available[Random().nextInt(available.size)]
-                    displaySingleStudent(randomStudent)
+                    if (batchCount == 1) {
+                        val randomStudent = available[Random().nextInt(available.size)]
+                        displaySingleStudent(randomStudent)
+                    } else {
+                        val rollingWinners = available.shuffled().take(batchCount)
+                        displayBatchStudents(rollingWinners)
+                    }
                 }
-                handler.postDelayed(this, 70)
+                handler.postDelayed(this, 80)
             }
         }
     }
 
     private fun displaySingleStudent(student: Student) {
+        imgResult.visibility = View.VISIBLE
+        layoutMultiPhotos.visibility = View.GONE
+
         tvResultId.text = if (showId) "学号: ${student.id}" else ""
         tvResultName.text = if (showName) "姓名: ${student.name}" else ""
         tvResultTitle.text = if (showTitle && student.title.isNotEmpty()) "职务: ${student.title}" else if(showTitle) "职务: 无" else ""
@@ -283,16 +295,37 @@ class MainActivity : AppCompatActivity() {
     private fun displayBatchStudents(winners: List<Student>) {
         if (winners.size == 1) {
             displaySingleStudent(winners[0])
-        } else {
-            val ids = winners.joinToString(", ") { it.id }
-            val names = winners.joinToString(", ") { it.name }
-            
-            tvResultId.text = if (showId) "学号: $ids" else ""
-            tvResultName.text = if (showName) "中选 (${winners.size}人): $names" else ""
-            tvResultTitle.text = if (showTitle) "多人抽取结果" else ""
-            
-            imgResult.setImageURI(winners[0].uri)
+            return
         }
+
+        imgResult.visibility = View.GONE
+        layoutMultiPhotos.visibility = View.VISIBLE
+        layoutMultiPhotos.removeAllViews()
+
+        val screenWidthDp = resources.displayMetrics.widthPixels
+        val marginPx = (4 * resources.displayMetrics.density).toInt()
+        val availableWidth = screenWidthDp - (marginPx * 2 * winners.size)
+        val itemWidth = minOf(availableWidth / winners.size, (150 * resources.displayMetrics.density).toInt())
+        val itemHeight = (220 * resources.displayMetrics.density).toInt()
+
+        for (winner in winners) {
+            val iv = ImageView(this).apply {
+                layoutParams = LinearLayout.LayoutParams(itemWidth, itemHeight).apply {
+                    setMargins(marginPx, 0, marginPx, 0)
+                }
+                scaleType = ImageView.ScaleType.CENTER_CROP
+                setImageURI(winner.uri)
+                setBackgroundColor(0xFFEEEEEE.toInt())
+            }
+            layoutMultiPhotos.addView(iv)
+        }
+
+        val ids = winners.joinToString(", ") { it.id }
+        val names = winners.joinToString(", ") { it.name }
+        
+        tvResultId.text = if (showId) "学号: $ids" else ""
+        tvResultName.text = if (showName) "中选 (${winners.size}人)" else ""
+        tvResultTitle.text = if (showTitle) "多人分组抽取" else ""
     }
 
     override fun onDestroy() {

@@ -69,6 +69,14 @@
             android:background="#EEEEEE"
             android:scaleType="centerCrop" />
 
+        <LinearLayout
+            android:id="@+id/layoutMultiPhotos"
+            android:layout_width="match_parent"
+            android:layout_height="250dp"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:visibility="gone" />
+
         <TextView
             android:id="@+id/tvResultId"
             android:layout_width="wrap_content"
