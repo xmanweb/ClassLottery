@@ -1,0 +1,41 @@
+name: Build Android APK
+
+# 当你提交代码到 main/master 分支，或者发起 Pull Request 时触发自动编译
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1. 拉取当前仓库中的代码
+    - name: Checkout Source Code
+      uses: actions/checkout@v4
+
+    # 2. 配置 Java 17 环境 (现代 Android 编译必备)
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: gradle
+
+    # 3. 给 Gradle 执行脚本赋予运行权限
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+
+    # 4. 执行自动编译，打出 Debug 版的 APK 文件
+    - name: Build Debug APK
+      run: ./gradlew assembleDebug
+
+    # 5. 上传生成的 APK 文件到 GitHub Actions 附件供下载
+    - name: Upload Debug APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: ClassLottery-Debug-APK
+        path: app/build/outputs/apk/debug/app-debug.apk
+
