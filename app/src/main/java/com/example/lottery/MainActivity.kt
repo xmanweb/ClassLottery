@@ -20,31 +20,29 @@ data class Student(
     val name: String,
     val title: String,
     val uri: Uri,
-    var isActive: Boolean = true,       // 是否参与抽取（请假开关）
-    var isInCooldown: Boolean = false   // 冷却状态
+    var isActive: Boolean = true,
+    var isInCooldown: Boolean = false
 )
 
-// 定义历史记录的存储结构：保存学生对象和事件标签
 sealed class HistoryItem {
-    data class WinnerRecord(val student: Student) : HistoryItem()
+    data class WinnerRecord(val winners: List<Student>) : HistoryItem()
     data class SystemRecord(val message: String) : HistoryItem()
 }
 
 class MainActivity : AppCompatActivity() {
 
     private val studentList = mutableListOf<Student>()
-    private val historyList = mutableListOf<HistoryItem>() // 改为存储结构化数据
+    private val historyList = mutableListOf<HistoryItem>()
     private val handler = Handler(Looper.getMainLooper())
     private var isRolling = false
 
     private val toneGen = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 100)
 
-    // 显示元素配置项
     private var showId = true
     private var showName = true
-    private var showTitle = true
+    private var showTitle = false 
+    private var batchCount = 1
 
-    // UI 控件
     private lateinit var tvStatusInfo: TextView
     private lateinit var tvResultId: TextView
     private lateinit var tvResultName: TextView
@@ -55,6 +53,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnStop: Button
     private lateinit var btnSelectFolder: Button
     private lateinit var btnResetCooldown: Button
+    private lateinit var btnBatchCount: Button
 
     private val selectFolderLauncher = registerForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
@@ -76,22 +75,24 @@ class MainActivity : AppCompatActivity() {
         btnStop = findViewById(R.id.btnStop)
         btnSelectFolder = findViewById(R.id.btnSelectFolder)
         btnResetCooldown = findViewById(R.id.btnResetCooldown)
+        btnBatchCount = findViewById(R.id.btnBatchCount)
 
         setupButtons()
     }
 
-    private val setupButtons = {
+    private fun setupButtons() {
         btnSelectFolder.setOnClickListener { selectFolderLauncher.launch(null) }
         btnStart.setOnClickListener { startLottery() }
         btnStop.setOnClickListener { stopLottery() }
         btnResetCooldown.setOnClickListener { resetCooldown() }
+        btnBatchCount.setOnClickListener { showBatchCountDialog() }
 
         tvStatusInfo.setOnLongClickListener {
             showSettingsDialog()
             true
         }
         
-        tvStatusInfo.text = "状态: 未加载目录 (💡长按本栏打开设置)"
+        tvStatusInfo.text = "状态: 未加载目录 (长按打开设置)"
     }
 
     private fun parsePhotosFromDirectory(treeUri: Uri) {
@@ -120,18 +121,29 @@ class MainActivity : AppCompatActivity() {
         val available = studentList.count { it.isActive && !it.isInCooldown }
         val absent = studentList.count { !it.isActive }
         val cooled = studentList.count { it.isInCooldown }
-        tvStatusInfo.text = "总:$total | 可抽:$available | 请假:$absent | 冷:$cooled (💡长按打开设置)"
+        tvStatusInfo.text = "总:$total | 可抽:$available | 请假:$absent | 冷:$cooled"
+    }
+
+    private fun showBatchCountDialog() {
+        val counts = arrayOf("1人 (单抽)", "2人", "3人", "4人", "5人")
+        AlertDialog.Builder(this)
+            .setTitle("选择每次抽取人数")
+            .setItems(counts) { _, which ->
+                batchCount = which + 1
+                btnBatchCount.text = "抽取人数: ${batchCount}人"
+            }
+            .show()
     }
 
     private fun showSettingsDialog() {
         if (studentList.isEmpty()) {
-            tvStatusInfo.text = "提示：请先选择照片目录加载学生名单！"
+            tvStatusInfo.text = "提示：请先选择照片目录！"
             return
         }
 
-        val options = arrayOf("👥 请假/出勤状态管理", "🎨 显示元素设置 (学号/姓名/职务)")
+        val options = arrayOf("请假/出勤状态管理", "显示元素设置 (学号/姓名/职务)")
         AlertDialog.Builder(this)
-            .setTitle("⚙ 系统高级设置")
+            .setTitle("系统高级设置")
             .setItems(options) { _, which ->
                 when (which) {
                     0 -> showLeaveManagementDialog()
@@ -146,13 +158,13 @@ class MainActivity : AppCompatActivity() {
         val checkedItems = studentList.map { it.isActive }.toBooleanArray()
 
         AlertDialog.Builder(this)
-            .setTitle("👥 请假管理 (勾选代表正常出勤)")
+            .setTitle("请假管理 (勾选代表正常出勤)")
             .setMultiChoiceItems(names, checkedItems) { _, index, isChecked ->
                 studentList[index].isActive = isChecked
             }
             .setPositiveButton("确定") { _, _ ->
                 updateStatusInfo()
-                historyList.add(0, HistoryItem.SystemRecord("【系统】更新了学生出勤状态"))
+                historyList.add(0, HistoryItem.SystemRecord("系统: 更新了学生出勤状态"))
                 refreshHistoryUI()
             }
             .setNegativeButton("取消", null)
@@ -164,7 +176,7 @@ class MainActivity : AppCompatActivity() {
         val checked = booleanArrayOf(showId, showName, showTitle)
 
         AlertDialog.Builder(this)
-            .setTitle("🎨 抽取结果显示元素设置")
+            .setTitle("抽取结果显示元素设置")
             .setMultiChoiceItems(items, checked) { _, which, isChecked ->
                 when (which) {
                     0 -> showId = isChecked
@@ -174,7 +186,6 @@ class MainActivity : AppCompatActivity() {
             }
             .setPositiveButton("确定") { _, _ ->
                 updateStatusInfo()
-                // 当设置改变时，立即全局刷新历史记录界面的渲染格式！
                 refreshHistoryUI()
             }
             .setNegativeButton("取消", null)
@@ -203,12 +214,13 @@ class MainActivity : AppCompatActivity() {
 
         val available = studentList.filter { it.isActive && !it.isInCooldown }
         if (available.isNotEmpty()) {
-            val winner = available[Random().nextInt(available.size)]
-            winner.isInCooldown = true
-            displayStudent(winner)
+            val actualCount = minOf(batchCount, available.size)
+            val winners = available.shuffled().take(actualCount)
+            winners.forEach { it.isInCooldown = true }
 
-            // 将结构化的中选记录加入列表
-            historyList.add(0, HistoryItem.WinnerRecord(winner))
+            displayBatchStudents(winners)
+
+            historyList.add(0, HistoryItem.WinnerRecord(winners))
             refreshHistoryUI()
         }
 
@@ -220,11 +232,10 @@ class MainActivity : AppCompatActivity() {
     private fun resetCooldown() {
         studentList.forEach { it.isInCooldown = false }
         updateStatusInfo()
-        historyList.add(0, HistoryItem.SystemRecord("【系统】冷却状态已重置"))
+        historyList.add(0, HistoryItem.SystemRecord("系统: 冷却状态已重置"))
         refreshHistoryUI()
     }
 
-    // 核心方法：根据当前的 showId、showName、showTitle 实时渲染所有历史记录
     private fun refreshHistoryUI() {
         if (historyList.isEmpty()) {
             tvHistoryLog.text = "暂无记录..."
@@ -235,14 +246,14 @@ class MainActivity : AppCompatActivity() {
             when (item) {
                 is HistoryItem.SystemRecord -> item.message
                 is HistoryItem.WinnerRecord -> {
-                    val s = item.student
-                    val parts = mutableListOf<String>()
-                    if (showId) parts.add(s.id)
-                    if (showName) parts.add(s.name)
-                    if (showTitle && s.title.isNotEmpty()) parts.add("(${s.title})")
-                    
-                    val recordStr = parts.joinToString(" ")
-                    "【中选】$recordStr"
+                    val namesStr = item.winners.joinToString("、") { s ->
+                        val parts = mutableListOf<String>()
+                        if (showId) parts.add(s.id)
+                        if (showName) parts.add(s.name)
+                        if (showTitle && s.title.isNotEmpty()) parts.add("(${s.title})")
+                        parts.joinToString(" ")
+                    }
+                    "中选 (${item.winners.size}人): $namesStr"
                 }
             }
         }
@@ -255,18 +266,33 @@ class MainActivity : AppCompatActivity() {
                 val available = studentList.filter { it.isActive && !it.isInCooldown }
                 if (available.isNotEmpty()) {
                     val randomStudent = available[Random().nextInt(available.size)]
-                    displayStudent(randomStudent)
+                    displaySingleStudent(randomStudent)
                 }
-                handler.postDelayed(this, 80)
+                handler.postDelayed(this, 70)
             }
         }
     }
 
-    private fun displayStudent(student: Student) {
+    private fun displaySingleStudent(student: Student) {
         tvResultId.text = if (showId) "学号: ${student.id}" else ""
         tvResultName.text = if (showName) "姓名: ${student.name}" else ""
         tvResultTitle.text = if (showTitle && student.title.isNotEmpty()) "职务: ${student.title}" else if(showTitle) "职务: 无" else ""
         imgResult.setImageURI(student.uri)
+    }
+
+    private fun displayBatchStudents(winners: List<Student>) {
+        if (winners.size == 1) {
+            displaySingleStudent(winners[0])
+        } else {
+            val ids = winners.joinToString(", ") { it.id }
+            val names = winners.joinToString(", ") { it.name }
+            
+            tvResultId.text = if (showId) "学号: $ids" else ""
+            tvResultName.text = if (showName) "中选 (${winners.size}人): $names" else ""
+            tvResultTitle.text = if (showTitle) "多人抽取结果" else ""
+            
+            imgResult.setImageURI(winners[0].uri)
+        }
     }
 
     override fun onDestroy() {
